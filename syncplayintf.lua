@@ -242,10 +242,10 @@ function process_chat_item_scrolling(i)
 	local xpos = CANVAS_WIDTH - (timedelta*MOVEMENT_PER_SECOND)
 	local text = chat_log[i].text
 	if text ~= '' then
-		local roughlen = string.len(text) * (opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER) * 1.5
+		local roughlen = string.len(text) * (opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER) * 1.5
 		if xpos > (-1*roughlen) then
 			local row = chat_log[i].row-1+opts['scrollingFirstRowOffset']
-			local ypos = opts['chatTopMargin']+(row * (opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER))
+			local ypos = opts['chatTopMargin']+(row * (opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER))
 			return format_scrolling(xpos,ypos,text)
 		else
 			chat_log[i].text = ''
@@ -268,10 +268,10 @@ function process_chat_item_subtitle(i)
 	local xpos = CANVAS_WIDTH - (timedelta*MOVEMENT_PER_SECOND)
 	local text = chat_log[i].text
 	if text ~= '' then
-		local roughlen = string.len(text) * (opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER)
+		local roughlen = string.len(text) * (opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER)
 		if xpos > (-1*roughlen) then
 			local row = chat_log[i].row
-			local ypos = row * (opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER)
+			local ypos = row * (opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER)
             return(format_scrolling(xpos,ypos,text))
 		else
 			chat_log[i].text = ''
@@ -501,7 +501,7 @@ function get_output_style()
 	local style = '{\\r' ..
 	               '\\1a&H00&\\3a&H00&\\4a&H99&' ..
 	               '\\1c&H'..fontColor..'&\\3c&H111111&\\4c&H000000&' ..
-	               '\\fn' .. opts['chatOutputFontFamily'] .. '\\fs' .. (opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER) .. '\\b' .. bold ..
+	               '\\fn' .. opts['chatOutputFontFamily'] .. '\\fs' .. (opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER) .. '\\b' .. bold ..
 	               '\\u'  .. underline .. '\\a5\\MarginV=500' .. '}'
 
 	--mp.osd_message("",0)
@@ -516,23 +516,6 @@ end
 
 -- Set the REPL visibility (`, Esc)
 function set_active(active)
-    if use_alpha_rows_for_chat == false then active = false end
-	if active == repl_active then return end
-	if active then
-		repl_active = true
-		insert_mode = false
-		mp.enable_key_bindings('repl-input', 'allow-hide-cursor+allow-vo-dragging')
-	else
-		repl_active = false
-		mp.disable_key_bindings('repl-input')
-    end
-    if default_oscvisibility_state ~= "never" and opts['OscVisibilityChangeCompatible'] == true then
-        if active then
-            mp.commandv("script-message", "osc-visibility","never", "no-osd")
-        else
-            mp.commandv("script-message", "osc-visibility",default_oscvisibility_state, "no-osd")
-        end
-    end
 end
 
 -- Show the repl if hidden and replace its contents with 'text'
@@ -691,16 +674,6 @@ end
 --local was_active_before_tab = false
 
 function handle_tab()
-    use_alpha_rows_for_chat = not use_alpha_rows_for_chat
-    if use_alpha_rows_for_chat then
-        mp.enable_key_bindings('repl-alpha-input')
-        --set_active(was_active_before_tab)
-    else
-        mp.disable_key_bindings('repl-alpha-input')
-        --was_active_before_tab = repl_active
-        --set_active(false)
-        escape()
-    end
 end
 
 -- Move the cursor to the next character (Right)
@@ -833,30 +806,9 @@ end
 -- Hence, this function manually creates an input section and puts a list of
 -- bindings in it.
 function add_repl_bindings(bindings)
-	local cfg = ''
-	for i, binding in ipairs(bindings) do
-		local key = binding[1]
-		local fn = binding[2]
-		local name = '__repl_binding_' .. i
-		mp.add_forced_key_binding(nil, name, fn, 'repeatable')
-		cfg = cfg .. key .. ' script-binding ' .. mp.script_name .. '/' ..
-		      name .. '\n'
-	end
-	mp.commandv('define-section', 'repl-input', cfg, 'force')
 end
 
 function add_repl_alpharow_bindings(bindings)
-	local cfg = ''
-	for i, binding in ipairs(bindings) do
-		local key = binding[1]
-		local fn = binding[2]
-		local name = '__repl_alpha_binding_' .. i
-		mp.add_forced_key_binding(nil, name, fn, 'repeatable')
-		cfg = cfg .. key .. ' script-binding ' .. mp.script_name .. '/' ..
-		      name .. '\n'
-	end
-	mp.commandv('define-section', 'repl-alpha-input', cfg, 'force')
-    mp.enable_key_bindings('repl-alpha-input')
 end
 
 -- Mapping from characters to mpv key names
@@ -946,19 +898,13 @@ local syncplayintfSet = false
 
 function readyMpvAfterSettingsKnown()
 	if syncplayintfSet == false then
-        local vertical_output_area = CANVAS_HEIGHT-(opts['chatTopMargin']+opts['chatBottomMargin']+((opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER)*opts['scrollingFirstRowOffset'])+SCROLLING_ADDITIONAL_BOTTOM_MARGIN)
-		max_scrolling_rows = math.floor(vertical_output_area/(opts['chatOutputRelativeFontSize']*FONT_SIZE_MULTIPLIER))
+        local vertical_output_area = CANVAS_HEIGHT-(opts['chatTopMargin']+opts['chatBottomMargin']+((opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER)*opts['scrollingFirstRowOffset'])+SCROLLING_ADDITIONAL_BOTTOM_MARGIN)
+		max_scrolling_rows = math.floor(vertical_output_area/(opts['chatOutputFontSize']*FONT_SIZE_MULTIPLIER))
 		local user_opts = { visibility = "auto", }
 		opt.read_options(user_opts, "osc")
 		default_oscvisibility_state = user_opts.visibility
 		if opts['chatInputEnabled'] == true then
 			key_hints_enabled = true
-			mp.add_forced_key_binding('enter', handle_enter)
-			mp.add_forced_key_binding('kp_enter', handle_enter)
-			if opts['chatDirectInput'] == true then
-				add_repl_alpharow_bindings(alpharowbindings)
-				mp.add_forced_key_binding('tab', handle_tab)
-			end
         end 
         syncplayintfSet = true
     end
