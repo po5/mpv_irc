@@ -3,6 +3,8 @@
 -- Displays lines from an IRC channel
 
 local options = {
+    enabled = true,
+
     -- Log file to monitor
     log_file = "",
 
@@ -10,7 +12,7 @@ local options = {
     min_duration = 1,
     max_duration = 8,
 
-    -- Extend the length of a line if it's the last
+    -- Extend the duration of a line if it's the last
     lead_out = 1,
 
     -- Characters Per Second
@@ -19,14 +21,12 @@ local options = {
     -- How fast we try to catch up when the queue is full (lower is faster)
     queue_weight = 4,
 
-    -- Possible values: osd, syncplay
-    -- Timing related options will be ignored if 'syncplay' is used
+    -- Possible values: osd, syncplay, scrolling
+    -- Timing related options only work with 'osd'
     display_method = "osd",
 
     -- List of pipe-separated patterns to discard
-    patterns = "",
-
-    enabled = true
+    patterns = ""
 }
 
 mp.options = require "mp.options"
@@ -82,6 +82,9 @@ function update()
             if options.display_method == "syncplay" then
                 timeout = 0
                 mp.command_native({"script-message-to", "syncplayintf", "chat", line})
+            elseif options.display_method == "scrolling" then
+                timeout = 0
+                mp.command_native({"script-message", "scrollingsubs", "add", line})
             else
                 timeout = math.max(timeout, math.min(options.max_duration, string.len(line) / options.target_cps) - #queue / options.queue_weight)
                 mp.osd_message(line, timeout + options.lead_out)
@@ -113,6 +116,9 @@ function toggle()
         enabled = false
         queue = {}
         logs = {}
+        if options.display_method == "scrolling" then
+            mp.command_native({"script-message", "scrollingsubs", "clear"})
+        end
         mp.osd_message("[irc] disabled")
     else
         mp.osd_message("[irc] enabled")
